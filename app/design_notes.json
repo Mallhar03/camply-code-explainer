@@ -1,0 +1,83 @@
+{
+  "chunking": {
+    "what": "80-line windows with 15-line overlap and exact source ranges.",
+    "why": "The codebase is language-agnostic here, and exact ranges let citations be checked.",
+    "rejected": "AST chunking and whole-file embeddings.",
+    "fails_when": "A function or design spans a boundary or is longer than a window.",
+    "interview_questions": ["Why 80 lines?", "Why overlap?", "When would AST chunking help?"],
+    "traps": ["Do not claim these numbers are optimal.", "Report measured retrieval before changing them."],
+    "show_me": "app/ingest/chunker.py"
+  },
+  "embeddings": {
+    "what": "BGE-small-en-v1.5 maps prefixed chunks and questions to 384 dimensions.",
+    "why": "It is local, free, and reproducible without an embedding API key.",
+    "rejected": "Paid embedding APIs.",
+    "fails_when": "Terms in the question do not match code vocabulary.",
+    "interview_questions": ["What is an embedding?", "Why normalize vectors?", "Why prefix file and line metadata?"],
+    "traps": ["Do not say the model understands code.", "Model output is geometric similarity, not code reasoning."],
+    "show_me": "app/ingest/embedder.py"
+  },
+  "vector search": {
+    "what": "Cosine similarity is computed with an exact pgvector scan.",
+    "why": "A few thousand chunks fit in memory and exact search gives complete recall.",
+    "rejected": "ANN indexes at the first stage.",
+    "fails_when": "The corpus grows or latency exceeds 200 ms.",
+    "interview_questions": ["What does cosine measure?", "Why exact instead of HNSW?", "What changes at 100k chunks?"],
+    "traps": ["Know the recall-versus-speed trade-off.", "Do not claim similarity means correctness."],
+    "show_me": "app/retrieval/retriever.py"
+  },
+  "tools": {
+    "what": "The loop can search keywords or read a guarded file slice.",
+    "why": "Semantic search misses exact identifiers and needs follow-up context.",
+    "rejected": "Retrieval-only or tools-only designs.",
+    "fails_when": "The model chooses the wrong tool or loops.",
+    "interview_questions": ["Why tools beyond semantic search?", "What is a tool round-trip?", "What prevents traversal?"],
+    "traps": ["Calling this an agent is not enough.", "Explain every stop condition."],
+    "show_me": "app/agent/tools.py"
+  },
+  "agent loop": {
+    "what": "A seed retrieval is followed by at most five model tool rounds and a submit.",
+    "why": "The hand-written loop is transparent and limits cost.",
+    "rejected": "LangChain and LangGraph.",
+    "fails_when": "Retrieval is wrong or the run spends too long.",
+    "interview_questions": ["What does the model receive?", "How does one tool round work?", "What stops the loop?"],
+    "traps": ["Do not omit the wall-clock limit.", "Do not claim frameworks have no place."],
+    "show_me": "app/agent/agent.py"
+  },
+  "structured output": {
+    "what": "submit_answer carries a Pydantic-validated answer contract.",
+    "why": "A defined schema gives a clear failure path and one retry.",
+    "rejected": "Parsing free-text JSON.",
+    "fails_when": "The model supplies weak content that still matches types.",
+    "interview_questions": ["Why a tool for output?", "What happens after a validation error?", "What schema fields exist?"],
+    "traps": ["Tool schema does not guarantee answer quality.", "Schema and citation checks are separate."],
+    "show_me": "app/agent/validate.py"
+  },
+  "citation verification": {
+    "what": "Every citation must overlap evidence read during this run.",
+    "why": "This is the main defense against invented file references.",
+    "rejected": "Trusting model citations.",
+    "fails_when": "The evidence itself is incomplete or wrong.",
+    "interview_questions": ["How is overlap checked?", "What does this prove?", "What can it not prove?"],
+    "traps": ["Do not claim it proves correctness.", "It proves only citation reality against seen evidence."],
+    "show_me": "app/agent/validate.py"
+  },
+  "confidence and refusal": {
+    "what": "Confidence is a rule based on verified citation count and seed similarity.",
+    "why": "Model-reported confidence cannot be explained reliably.",
+    "rejected": "Asking the model for a probability.",
+    "fails_when": "The threshold has not been calibrated.",
+    "interview_questions": ["How is high confidence defined?", "Why not ask the model?", "When does it refuse?"],
+    "traps": ["Do not present confidence as probability.", "Refusal is normal for missing evidence."],
+    "show_me": "app/agent/validate.py"
+  },
+  "security guard": {
+    "what": "File reads resolve inside REPO_ROOT and must exist in the files table.",
+    "why": "It blocks traversal and keeps tools from reading arbitrary local files.",
+    "rejected": "Browser-supplied filesystem access.",
+    "fails_when": "A future tool bypasses the shared guard.",
+    "interview_questions": ["What does ../ do?", "Why check the files table?", "What about prompt injection?"],
+    "traps": ["Do not rely on a string prefix check.", "Test prompt injection as data."],
+    "show_me": "app/agent/tools.py"
+  }
+}

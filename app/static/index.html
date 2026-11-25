@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Camply Code Explainer</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#8b949e; --green:#3fb950; --amber:#d29922; --red:#f85149; }
+    * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--text); font:14px system-ui,sans-serif }
+    header { height:64px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; border-bottom:1px solid var(--line) }
+    main { display:grid; grid-template-columns:minmax(280px,1fr) minmax(320px,1fr); height:calc(100vh - 64px) }
+    .left,.right { overflow:auto; padding:24px } .left { border-right:1px solid var(--line) }
+    textarea { width:100%; min-height:100px; resize:vertical; background:#0d1117; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:12px }
+    button { background:#238636; color:white; border:0; border-radius:6px; padding:9px 14px; font-weight:600; cursor:pointer }
+    button:disabled { opacity:.6 } .row { display:flex; gap:8px; align-items:center; margin:12px 0 }
+    .badge { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:3px 8px; text-transform:uppercase; font-size:12px }
+    .answered { color:var(--green) } .insufficient_evidence { color:var(--amber) } .error { color:var(--red) }
+    .citation { display:block; color:#58a6ff; text-decoration:none; margin:6px 0; cursor:pointer }
+    pre { white-space:pre-wrap; background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:10px; display:none }
+    .step { border:1px solid var(--line); border-radius:8px; margin-bottom:12px; padding:12px }
+    .step h3 { margin:0 0 8px; font-size:14px } .step small { color:var(--muted) }
+    .card { margin-top:10px; border-left:3px solid #58a6ff; background:#1c2128; padding:10px; display:none }
+    @media(max-width:800px){ main{grid-template-columns:1fr} .left{border-right:0;border-bottom:1px solid var(--line)} }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Camply Code Explainer</strong>
+    <label><input id="defend" type="checkbox"> Defend Mode</label>
+  </header>
+  <main>
+    <section class="left">
+      <textarea id="question" maxlength="500" placeholder="Ask about the Camply codebase"></textarea>
+      <div class="row"><button id="ask">Ask</button><span id="status" class="badge"></span><span id="confidence"></span></div>
+      <article id="answer"></article>
+      <div id="citations"></div>
+      <pre id="snippet"></pre>
+    </section>
+    <section class="right"><h2>Run trace</h2><div id="trace"></div></section>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    let designNotes = {};
+    fetch("/design-notes").then(r => r.json()).then(v => designNotes = v);
+
+    function esc(v){ const d=document.createElement("div"); d.textContent=v; return d.innerHTML }
+    function addStep(title, detail, component){
+      const div=document.createElement("div"); div.className="step";
+      div.innerHTML=`<h3>${esc(title)}</h3><small>${esc(detail)}</small>`;
+      if(component && designNotes[component]){
+        const n=designNotes[component];
+        div.insertAdjacentHTML("beforeend",`<div class="card"><strong>${esc(n.what)}</strong><p>${esc(n.why)}</p><b>Fails when:</b> ${esc(n.fails_when)}<br><b>Show:</b> ${esc(n.show_me)}</div>`);
+      }
+      $("trace").appendChild(div);
+    }
+    function renderTrace(trace){
+      $("trace").innerHTML="";
+      (trace.seed || []).forEach((c,i)=>addStep(`Seed ${i+1}: ${c.path}:${c.start_line}-${c.end_line}`,`score ${Number(c.score||0).toFixed(3)} | ${c.content.length} chars`,"vector search"));
+      (trace.iterations || []).forEach((it,i)=>{
+        (it.tool_calls || []).forEach(call=>addStep(`Iteration ${i+1}: ${call.name}`,`${JSON.stringify(call.arguments)} | result ${call.result_size || 0} chars | ${call.ms || 0} ms`,call.name==="submit_answer"?"structured output":"tools"));
+      });
+      addStep("Validation",trace.invalid_citations?.length ? `${trace.invalid_citations.length} invalid citation(s)`:"Citations checked","citation verification");
+      addStep("Cost",`${trace.tokens_in || 0} input tokens | ${trace.tokens_out || 0} output tokens | ${trace.latency_ms || 0} ms`,"agent loop");
+      syncCards();
+    }
+    function syncCards(){
+      document.querySelectorAll(".card").forEach(card=>card.style.display=$("defend").checked?"block":"none");
+    }
+    $("defend").addEventListener("change",syncCards);
+    $("ask").onclick=async()=>{
+      const question=$("question").value.trim(); if(!question) return;
+      $("ask").disabled=true; $("status").textContent="running";
+      try{
+        const r=await fetch("/ask",{method:"POST",headers:{contentType:"application/json","content-type":"application/json"},body:JSON.stringify({question})});
+        const data=await r.json();
+        if(!r.ok) throw new Error(data.detail?.error || "Request failed");
+        $("status").textContent=data.status; $("status").className=`badge ${data.status}`;
+        $("confidence").textContent=`confidence: ${data.confidence}`;
+        $("answer").textContent=data.answer;
+        $("citations").innerHTML="";
+        data.citations.forEach(c=>{
+          const a=document.createElement("a"); a.className="citation"; a.textContent=`${c.path}:${c.start_line}-${c.end_line}`;
+          a.onclick=async()=>{
+            const tr=await fetch(`/trace/${data.trace_id}`).then(r=>r.json());
+            const seed=(tr.seed||[]).find(x=>x.path===c.path&&c.start_line<=x.end_line&&c.end_line>=x.start_line);
+            $("snippet").textContent=seed?.content || "No matching source slice retained in trace.";
+            $("snippet").style.display="block";
+          };
+          $("citations").appendChild(a);
+        });
+        const trace=await fetch(`/trace/${data.trace_id}`).then(r=>r.json()).catch(()=>({}));
+        renderTrace(trace);
+      }catch(e){ $("status").textContent="error"; $("status").className="badge error"; $("answer").textContent=e.message; }
+      finally{$("ask").disabled=false}
+    };
+  </script>
+</body>
+</html>

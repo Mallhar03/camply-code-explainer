@@ -1,0 +1,20 @@
+{"question":"How does refresh-token rotation work?","expected_files":["src/controllers/auth.controller.ts","src/routes/auth.routes.ts"],"expected_status":"answered"}
+{"question":"How is the Redis feed cache used and invalidated?","expected_files":["src/config/redis.ts","src/controllers/post.controller.ts"],"expected_status":"answered"}
+{"question":"How does the global rate limiter protect routes?","expected_files":["src/middleware/rateLimiters.ts","src/app.ts"],"expected_status":"answered"}
+{"question":"How is Socket.IO authentication implemented?","expected_files":["src/config/socket.ts","src/app.ts"],"expected_status":"answered"}
+{"question":"How does placement cursor pagination work?","expected_files":["src/controllers/placement.controller.ts","src/routes/placement.routes.ts"],"expected_status":"answered"}
+{"question":"How are trust score tiers calculated?","expected_files":["src/services/trust.service.ts","src/utils/trustScore.ts"],"expected_status":"answered"}
+{"question":"What does the CI workflow execute?","expected_files":[".github/workflows/main_camply-backend.yml"],"expected_status":"answered"}
+{"question":"What data models are declared in the Prisma schema?","expected_files":["prisma/schema.prisma"],"expected_status":"answered"}
+{"question":"How is production configuration loaded?","expected_files":["src/config/production.ts","src/app.ts"],"expected_status":"answered"}
+{"question":"How are authentication middleware and protected routes connected?","expected_files":["src/middleware/auth.middleware.ts","src/app.ts"],"expected_status":"answered"}
+{"question":"How are teams and team membership modeled?","expected_files":["prisma/schema.prisma","src/controllers/team.controller.ts"],"expected_status":"answered"}
+{"question":"How are notifications created and marked read?","expected_files":["src/services/notification.service.ts","src/controllers/notification.controller.ts"],"expected_status":"answered"}
+{"question":"How do authentication middleware and refresh-token storage work together?","expected_files":["src/middleware/auth.middleware.ts","src/controllers/auth.controller.ts","prisma/schema.prisma"],"expected_status":"answered"}
+{"question":"Trace placement posts from the API route to the database model.","expected_files":["src/routes/placement.routes.ts","src/controllers/placement.controller.ts","prisma/schema.prisma"],"expected_status":"answered"}
+{"question":"Trace Socket.IO setup from server startup through socket configuration.","expected_files":["src/server.ts","src/config/socket.ts","src/app.ts"],"expected_status":"answered"}
+{"question":"How do trust scoring and the rate limiter jointly affect a user action?","expected_files":["src/services/trust.service.ts","src/middleware/rateLimiters.ts"],"expected_status":"answered"}
+{"question":"Does Camply have an LLM moderation pipeline?","expected_files":[],"expected_status":"insufficient_evidence"}
+{"question":"What Docker setup does Camply use for local development?","expected_files":[],"expected_status":"insufficient_evidence"}
+{"question":"Does Camply use a NoSQL database?","expected_files":[],"expected_status":"insufficient_evidence"}
+{"question":"Does Camply perform three-source parallel fetches?","expected_files":[],"expected_status":"insufficient_evidence"}
